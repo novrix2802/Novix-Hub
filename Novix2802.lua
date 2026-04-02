@@ -1,224 +1,287 @@
-getgenv().ScriptTitle = "🔥NOVIX HUB VIP🔥"
-getgenv().ScriptImage = "https://i.ibb.co/ymm3xwwy/1000084884-1-512x512.png"
-
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
 local CORRECT_KEY = "NOVIXVIP"
-local savedKey = nil
-
-pcall(function()
-    if isfile("novix_key.txt") then
-        savedKey = readfile("novix_key.txt")
-    end
-end)
+local unlocked = false
 
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 
-local ToggleBtn = Instance.new("ImageButton")
-ToggleBtn.Size = UDim2.new(0,60,0,60)
-ToggleBtn.Position = UDim2.new(0,20,0.5,0)
-ToggleBtn.Image = getgenv().ScriptImage
-ToggleBtn.BackgroundTransparency = 1
-ToggleBtn.Parent = ScreenGui
-
-local dragging, dragInput, dragStart, startPos
-ToggleBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = ToggleBtn.Position
+local function getImage(path,url)
+    if getcustomasset then
+        if not isfile(path) then
+            writefile(path, game:HttpGet(url))
+        end
+        return getcustomasset(path)
+    else
+        return url
     end
-end)
+end
 
-ToggleBtn.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
+local LOGO = getImage("novixlogo.png","https://i.ibb.co/ymm3xwwy/1000084884-1-512x512.png")
+
+local savedKey = ""
+if isfile and readfile then
+    if isfile("novix_key.txt") then
+        savedKey = readfile("novix_key.txt")
     end
-end)
+end
 
-UIS.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        ToggleBtn.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
+local KeyFrame = Instance.new("Frame", ScreenGui)
+KeyFrame.Size = UDim2.new(0,300,0,170)
+KeyFrame.Position = UDim2.new(0.5,-150,0.5,-85)
+KeyFrame.BackgroundColor3 = Color3.fromRGB(15,15,15)
+Instance.new("UICorner", KeyFrame)
+
+local stroke = Instance.new("UIStroke", KeyFrame)
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(0,255,170)
+
+local Title = Instance.new("TextLabel", KeyFrame)
+Title.Size = UDim2.new(1,0,0.25,0)
+Title.Text = "🔐 NOVIX KEY SYSTEM"
+Title.BackgroundTransparency = 1
+Title.TextScaled = true
+Title.TextColor3 = Color3.new(1,1,1)
+
+local Box = Instance.new("TextBox", KeyFrame)
+Box.Size = UDim2.new(0.8,0,0.25,0)
+Box.Position = UDim2.new(0.1,0,0.35,0)
+Box.TextScaled = true
+Box.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Box.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", Box)
+Box.Text = savedKey
+
+local Status = Instance.new("TextLabel", KeyFrame)
+Status.Size = UDim2.new(1,0,0.15,0)
+Status.Position = UDim2.new(0,0,0.6,0)
+Status.BackgroundTransparency = 1
+Status.TextScaled = true
+
+local Check = Instance.new("TextButton", KeyFrame)
+Check.Size = UDim2.new(0.6,0,0.25,0)
+Check.Position = UDim2.new(0.2,0,0.75,0)
+Check.Text = "Unlock"
+Check.TextScaled = true
+Check.BackgroundColor3 = Color3.fromRGB(0,255,170)
+Check.TextColor3 = Color3.new(0,0,0)
+Instance.new("UICorner", Check)
+
+local function shake()
+    for i=1,6 do
+        KeyFrame.Position = KeyFrame.Position + UDim2.new(0,math.random(-5,5),0,0)
+        task.wait(0.03)
     end
-end)
+end
 
-UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
-end)
+local function checkKey()
+    Status.Text = "Checking..."
+    Status.TextColor3 = Color3.fromRGB(255,255,0)
+    task.wait(0.4)
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0,250,0,240)
-MainFrame.Position = UDim2.new(0.5,-125,0.5,-120)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-MainFrame.Visible = false
-MainFrame.Parent = ScreenGui
+    if Box.Text == CORRECT_KEY then
+        Status.Text = "Access Granted ✅"
+        Status.TextColor3 = Color3.fromRGB(0,255,100)
 
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
-local KeyBox = Instance.new("TextBox")
-KeyBox.Size = UDim2.new(0,200,0,40)
-KeyBox.Position = UDim2.new(0.5,-100,0,20)
-KeyBox.PlaceholderText = "Enter Key..."
-KeyBox.Text = savedKey or ""
-KeyBox.Parent = MainFrame
-
-local unlocked = false
-
-KeyBox.FocusLost:Connect(function()
-    if KeyBox.Text == CORRECT_KEY then
         unlocked = true
-        pcall(function()
-            writefile("novix_key.txt", KeyBox.Text)
-        end)
-        KeyBox.Text = "Correct"
-    else
-        KeyBox.Text = "Wrong"
-    end
-end)
+        KeyFrame.Visible = false
+        Main.Visible = true
 
-local antiAFK = false
-local afkConn1, afkConn2, afkConn3
-
-function ToggleAFK(state)
-    antiAFK = state
-
-    if state then
-        local char = player.Character or player.CharacterAdded:Wait()
-        local root = char:WaitForChild("HumanoidRootPart")
-        local hum = char:WaitForChild("Humanoid")
-
-        local pos = root.CFrame
-
-        hum:ChangeState(Enum.HumanoidStateType.Physics)
-        hum.AutoRotate = false
-
-        afkConn1 = RunService.Heartbeat:Connect(function()
-            root.CFrame = pos
-            root.Velocity = Vector3.new(0,0,0)
-            root.RotVelocity = Vector3.new(0,0,0)
-        end)
-
-        afkConn2 = RunService.Stepped:Connect(function()
-            pcall(function()
-                sethiddenproperty(player, "SimulationRadius", math.huge)
-            end)
-        end)
-
-        afkConn3 = player.Idled:Connect(function()
-            local vu = game:GetService("VirtualUser")
-            vu:CaptureController()
-            vu:ClickButton2(Vector2.new())
-        end)
-
-        spawn(function()
-            while antiAFK do
-                task.wait(10)
-                pcall(function()
-                    VIM:SendKeyEvent(true, Enum.KeyCode.Unknown, false, game)
-                    VIM:SendKeyEvent(false, Enum.KeyCode.Unknown, false, game)
-                end)
-            end
-        end)
-
-        spawn(function()
-            while antiAFK do
-                task.wait(15)
-                root.Anchored = true
-                task.wait(0.1)
-                root.Anchored = false
-            end
-        end)
-
-    else
-        if afkConn1 then afkConn1:Disconnect() end
-        if afkConn2 then afkConn2:Disconnect() end
-        if afkConn3 then afkConn3:Disconnect() end
-
-        local char = player.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then
-                hum.AutoRotate = true
-                hum:ChangeState(Enum.HumanoidStateType.Running)
-            end
+        if writefile then
+            writefile("novix_key.txt", Box.Text)
         end
+    else
+        Status.Text = "Wrong Key ❌"
+        Status.TextColor3 = Color3.fromRGB(255,0,0)
+        shake()
     end
 end
 
+Check.MouseButton1Click:Connect(checkKey)
+Box.FocusLost:Connect(function(enter)
+    if enter then checkKey() end
+end)
+
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0,300,0,220)
+Main.Position = UDim2.new(0.4,0,0.3,0)
+Main.BackgroundColor3 = Color3.fromRGB(10,10,10)
+Main.Visible = false
+Instance.new("UICorner", Main)
+
+local strokeMain = Instance.new("UIStroke", Main)
+strokeMain.Thickness = 2
+
+local Title2 = Instance.new("TextLabel", Main)
+Title2.Size = UDim2.new(1,0,0.2,0)
+Title2.Text = "🔥 NOVIX HUB VIP 🔥"
+Title2.BackgroundTransparency = 1
+Title2.TextScaled = true
+Title2.TextColor3 = Color3.new(1,1,1)
+
+local Toggle = Instance.new("TextButton", Main)
+Toggle.Size = UDim2.new(0.8,0,0.25,0)
+Toggle.Position = UDim2.new(0.1,0,0.25,0)
+Toggle.BackgroundColor3 = Color3.fromRGB(20,20,20)
+Toggle.TextScaled = true
+Toggle.TextColor3 = Color3.fromRGB(0,255,170)
+Toggle.Text = "ANTI AFK ❌"
+
+local FreezeBox = Instance.new("TextButton", Main)
+FreezeBox.Size = UDim2.new(0.8,0,0.25,0)
+FreezeBox.Position = UDim2.new(0.1,0,0.55,0)
+FreezeBox.BackgroundColor3 = Color3.fromRGB(20,20,20)
+FreezeBox.Text = "Freeze: OFF"
+FreezeBox.TextScaled = true
+FreezeBox.TextColor3 = Color3.fromRGB(0,170,255)
+
+local Time = Instance.new("TextLabel", Main)
+Time.Size = UDim2.new(0.8,0,0.2,0)
+Time.Position = UDim2.new(0.1,0,0.82,0)
+Time.BackgroundTransparency = 1
+Time.TextScaled = true
+Time.TextColor3 = Color3.fromRGB(0,255,170)
+Time.Text = "AFK: 00:00"
+
+local afk = false
 local freeze = false
-local freezeConn
+local sec = 0
 
-function ToggleFreeze(state)
-    freeze = state
+Toggle.MouseButton1Click:Connect(function()
+    afk = not afk
+    Toggle.Text = "ANTI AFK "..(afk and "✅" or "❌")
+end)
+
+local freezeConn
+local savedCF
+
+local function doFreeze(state)
+    if freezeConn then
+        freezeConn:Disconnect()
+        freezeConn = nil
+    end
+
+    local char = player.Character
+    if not char then return end
+
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
 
     if state then
-        local char = player.Character or player.CharacterAdded:Wait()
-        local root = char:WaitForChild("HumanoidRootPart")
-        local hum = char:WaitForChild("Humanoid")
-
-        local pos = root.CFrame
-
-        hum.WalkSpeed = 0
-        hum.JumpPower = 0
-        hum.AutoRotate = false
-
-        freezeConn = RunService.Heartbeat:Connect(function()
-            root.CFrame = pos
-            root.Velocity = Vector3.new(0,0,0)
-            root.RotVelocity = Vector3.new(0,0,0)
+        savedCF = root.CFrame
+        freezeConn = RunService.Stepped:Connect(function()
+            if root and root.Parent then
+                root.CFrame = savedCF
+                root.Velocity = Vector3.new(0,0,0)
+                hum:ChangeState(Enum.HumanoidStateType.Physics)
+            end
         end)
     else
-        if freezeConn then freezeConn:Disconnect() end
-
-        local char = player.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then
-                hum.WalkSpeed = 16
-                hum.JumpPower = 50
-                hum.AutoRotate = true
-            end
-        end
+        hum:ChangeState(Enum.HumanoidStateType.Running)
     end
 end
 
-local AFKBtn = Instance.new("TextButton")
-AFKBtn.Size = UDim2.new(0,200,0,40)
-AFKBtn.Position = UDim2.new(0.5,-100,0,80)
-AFKBtn.Text = "Anti AFK: OFF"
-AFKBtn.Parent = MainFrame
-
-AFKBtn.MouseButton1Click:Connect(function()
-    if not unlocked then return end
-    antiAFK = not antiAFK
-    ToggleAFK(antiAFK)
-    AFKBtn.Text = antiAFK and "Anti AFK: ON" or "Anti AFK: OFF"
+FreezeBox.MouseButton1Click:Connect(function()
+    freeze = not freeze
+    FreezeBox.Text = "Freeze: "..(freeze and "ON" or "OFF")
+    doFreeze(freeze)
 end)
 
-local FreezeBtn = Instance.new("TextButton")
-FreezeBtn.Size = UDim2.new(0,200,0,40)
-FreezeBtn.Position = UDim2.new(0.5,-100,0,140)
-FreezeBtn.Text = "Freeze: OFF"
-FreezeBtn.Parent = MainFrame
+player.Idled:Connect(function()
+    if afk then
+        local vu = game:GetService("VirtualUser")
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end
+end)
 
-FreezeBtn.MouseButton1Click:Connect(function()
-    if not unlocked then return end
-    freeze = not freeze
-    ToggleFreeze(freeze)
-    FreezeBtn.Text = freeze and "Freeze: ON" or "Freeze: OFF"
+RunService.Heartbeat:Connect(function()
+    if afk then
+        pcall(function()
+            VIM:SendMouseMoveEvent(0,0,game)
+            VIM:SendMouseButtonEvent(0,0,0,true,game,0)
+            VIM:SendMouseButtonEvent(0,0,0,false,game,0)
+        end)
+
+        local char = player.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Running)
+                if math.random(1,25) == 1 then
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end
+
+            if root and not freeze then
+                root.CFrame = root.CFrame * CFrame.new(0,0,0.05)
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if afk then
+            sec += 1
+            Time.Text = "AFK: "..string.format("%02d:%02d",math.floor(sec/60),sec%60)
+        end
+    end
+end)
+
+local function drag(obj)
+    local d,sp,op
+    obj.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.Touch then
+            d=true sp=i.Position op=obj.Position
+        end
+    end)
+    UIS.InputChanged:Connect(function(i)
+        if d then
+            local delta=i.Position-sp
+            obj.Position = UDim2.new(op.X.Scale, op.X.Offset + delta.X, op.Y.Scale, op.Y.Offset + delta.Y)
+        end
+    end)
+    obj.InputEnded:Connect(function() d=false end)
+end
+
+local Open = Instance.new("ImageButton", ScreenGui)
+Open.Size = UDim2.new(0,60,0,60)
+Open.Position = UDim2.new(0.05,0,0.5,0)
+Open.BackgroundColor3 = Color3.fromRGB(0,0,0)
+Open.Image = LOGO
+Instance.new("UICorner", Open).CornerRadius = UDim.new(1,0)
+
+drag(Open)
+drag(Main)
+
+RunService.RenderStepped:Connect(function()
+    Open.Rotation += 0.3
+end)
+
+task.spawn(function()
+    local h=0
+    while true do
+        h+=0.01
+        if h>1 then h=0 end
+        strokeMain.Color = Color3.fromHSV(h,1,1)
+        task.wait()
+    end
+end)
+
+Open.MouseButton1Click:Connect(function()
+    if not unlocked then
+        KeyFrame.Visible = true
+    else
+        Main.Visible = not Main.Visible
+    end
 end)
