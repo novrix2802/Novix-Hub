@@ -1,6 +1,5 @@
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
-local VIM = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
@@ -30,6 +29,7 @@ if isfile and readfile then
     end
 end
 
+-- KEY UI
 local KeyFrame = Instance.new("Frame", ScreenGui)
 KeyFrame.Size = UDim2.new(0,300,0,170)
 KeyFrame.Position = UDim2.new(0.5,-150,0.5,-85)
@@ -106,6 +106,7 @@ Box.FocusLost:Connect(function(enter)
     if enter then checkKey() end
 end)
 
+-- MAIN UI
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0,300,0,220)
 Main.Position = UDim2.new(0.4,0,0.3,0)
@@ -123,6 +124,7 @@ Title2.BackgroundTransparency = 1
 Title2.TextScaled = true
 Title2.TextColor3 = Color3.new(1,1,1)
 
+-- Anti AFK
 local Toggle = Instance.new("TextButton", Main)
 Toggle.Size = UDim2.new(0.8,0,0.25,0)
 Toggle.Position = UDim2.new(0.1,0,0.25,0)
@@ -131,13 +133,22 @@ Toggle.TextScaled = true
 Toggle.TextColor3 = Color3.fromRGB(0,255,170)
 Toggle.Text = "ANTI AFK ❌"
 
-local FreezeBox = Instance.new("TextButton", Main)
-FreezeBox.Size = UDim2.new(0.8,0,0.25,0)
-FreezeBox.Position = UDim2.new(0.1,0,0.55,0)
-FreezeBox.BackgroundColor3 = Color3.fromRGB(20,20,20)
-FreezeBox.Text = "Freeze: OFF"
-FreezeBox.TextScaled = true
-FreezeBox.TextColor3 = Color3.fromRGB(0,170,255)
+local afk = false
+local sec = 0
+
+Toggle.MouseButton1Click:Connect(function()
+    afk = not afk
+    Toggle.Text = "ANTI AFK "..(afk and "✅" or "❌")
+end)
+
+-- Anti AFK fake (không di chuyển thật)
+player.Idled:Connect(function()
+    if afk then
+        local vu = game:GetService("VirtualUser")
+        vu:CaptureController()
+        vu:ClickButton2(Vector2.new())
+    end
+end)
 
 local Time = Instance.new("TextLabel", Main)
 Time.Size = UDim2.new(0.8,0,0.2,0)
@@ -147,15 +158,26 @@ Time.TextScaled = true
 Time.TextColor3 = Color3.fromRGB(0,255,170)
 Time.Text = "AFK: 00:00"
 
-local afk = false
-local freeze = false
-local sec = 0
-
-Toggle.MouseButton1Click:Connect(function()
-    afk = not afk
-    Toggle.Text = "ANTI AFK "..(afk and "✅" or "❌")
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if afk then
+            sec += 1
+            Time.Text = "AFK: "..string.format("%02d:%02d",math.floor(sec/60),sec%60)
+        end
+    end
 end)
 
+-- Freeze
+local FreezeBox = Instance.new("TextButton", Main)
+FreezeBox.Size = UDim2.new(0.8,0,0.25,0)
+FreezeBox.Position = UDim2.new(0.1,0,0.55,0)
+FreezeBox.BackgroundColor3 = Color3.fromRGB(20,20,20)
+FreezeBox.Text = "Freeze: OFF"
+FreezeBox.TextScaled = true
+FreezeBox.TextColor3 = Color3.fromRGB(0,170,255)
+
+local freeze = false
 local freezeConn
 local savedCF
 
@@ -192,82 +214,51 @@ FreezeBox.MouseButton1Click:Connect(function()
     doFreeze(freeze)
 end)
 
-player.Idled:Connect(function()
-    if afk then
-        local vu = game:GetService("VirtualUser")
-        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    if afk then
-        pcall(function()
-            VIM:SendMouseMoveEvent(0,0,game)
-            VIM:SendMouseButtonEvent(0,0,0,true,game,0)
-            VIM:SendMouseButtonEvent(0,0,0,false,game,0)
-        end)
-
-        local char = player.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local root = char:FindFirstChild("HumanoidRootPart")
-
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.Running)
-                if math.random(1,25) == 1 then
-                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
-            end
-
-            if root and not freeze then
-                root.CFrame = root.CFrame * CFrame.new(0,0,0.05)
-            end
-        end
-    end
-end)
-
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if afk then
-            sec += 1
-            Time.Text = "AFK: "..string.format("%02d:%02d",math.floor(sec/60),sec%60)
-        end
-    end
-end)
-
+-- Drag function
 local function drag(obj)
-    local d,sp,op
-    obj.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.Touch then
-            d=true sp=i.Position op=obj.Position
+    local dragging = false
+    local dragInput, startPos, startFramePos
+
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            startPos = input.Position
+            startFramePos = obj.Position
+            dragInput = input
         end
     end)
-    UIS.InputChanged:Connect(function(i)
-        if d then
-            local delta=i.Position-sp
-            obj.Position = UDim2.new(op.X.Scale, op.X.Offset + delta.X, op.Y.Scale, op.Y.Offset + delta.Y)
+
+    UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - startPos
+            obj.Position = UDim2.new(
+                startFramePos.X.Scale,
+                startFramePos.X.Offset + delta.X,
+                startFramePos.Y.Scale,
+                startFramePos.Y.Offset + delta.Y
+            )
         end
     end)
-    obj.InputEnded:Connect(function() d=false end)
+
+    UIS.InputEnded:Connect(function(input)
+        if input == dragInput then
+            dragging = false
+        end
+    end)
 end
 
 local Open = Instance.new("ImageButton", ScreenGui)
 Open.Size = UDim2.new(0,60,0,60)
 Open.Position = UDim2.new(0.05,0,0.5,0)
-Open.BackgroundColor3 = Color3.fromRGB(0,0,0)
 Open.Image = LOGO
+Open.BackgroundColor3 = Color3.fromRGB(0,0,0)
 Instance.new("UICorner", Open).CornerRadius = UDim.new(1,0)
 
 drag(Open)
 drag(Main)
 
-RunService.RenderStepped:Connect(function()
-    Open.Rotation += 0.3
-end)
-
+-- RGB border
 task.spawn(function()
     local h=0
     while true do
@@ -278,6 +269,7 @@ task.spawn(function()
     end
 end)
 
+-- Open menu button
 Open.MouseButton1Click:Connect(function()
     if not unlocked then
         KeyFrame.Visible = true
